@@ -1,26 +1,215 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-glance-bg: #08080c;
+  --color-glance-surface: #13131b;
+  --color-glance-viewport: #0e0e16;
+  --color-glance-primary: #ececf2;
+  --color-glance-muted: #7a7a8b;
+  --color-glance-muted-light: #9a9aab;
+  --color-glance-faint: #54546a;
+  --color-glance-border: rgba(255, 255, 255, 0.06);
+  --color-glance-border-strong: rgba(255, 255, 255, 0.09);
+  --color-glance-focus: #7c5cff;
+  --color-glance-cyan: #00d4ff;
+  --color-glance-purple: #7c5cff;
+  --color-glance-purple-tag: rgba(124, 92, 255, 0.13);
+  --color-glance-purple-tag-border: rgba(124, 92, 255, 0.2);
+  --color-glance-accent-text: #06121a;
+  --color-glance-online: #1ed760;
+  --color-glance-input-placeholder: #55586a;
+
+  --font-display: var(--font-space-grotesk);
+  --font-body: var(--font-manrope);
+
+  --animate-glance-prog: glance-prog 1.6s ease-in-out infinite;
+  --animate-glance-pulse: glance-pulse 2s ease-in-out infinite;
+  --animate-glance-pulse-fast: glance-pulse 1.4s ease-in-out infinite;
+
+  --animate-claw-trolley: claw-trolley 6s ease-in-out infinite;
+  --animate-claw-drop: claw-drop 6s ease-in-out infinite;
+  --animate-claw-prong-l: claw-prong-l 6s ease-in-out infinite;
+  --animate-claw-prong-r: claw-prong-r 6s ease-in-out infinite;
+  --animate-blink: glance-pulse 1s steps(1, end) infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes glance-prog {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
   }
 }
 
+@keyframes glance-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Claw-machine cycle — all four share the same 6s timeline so they stay in sync.
+   move right → drop → close prongs → lift → carry left → release. */
+@keyframes claw-trolley {
+  0% {
+    transform: translateX(-46%);
+  }
+  18%,
+  62% {
+    transform: translateX(42%);
+  }
+  88%,
+  100% {
+    transform: translateX(-46%);
+  }
+}
+
+@keyframes claw-drop {
+  0%,
+  18% {
+    transform: translateY(0);
+  }
+  34%,
+  46% {
+    transform: translateY(96px);
+  }
+  62%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes claw-prong-l {
+  0%,
+  38% {
+    transform: rotate(-26deg);
+  }
+  46%,
+  82% {
+    transform: rotate(-6deg);
+  }
+  90%,
+  100% {
+    transform: rotate(-26deg);
+  }
+}
+
+@keyframes claw-prong-r {
+  0%,
+  38% {
+    transform: rotate(26deg);
+  }
+  46%,
+  82% {
+    transform: rotate(6deg);
+  }
+  90%,
+  100% {
+    transform: rotate(26deg);
+  }
+}
+
+/* Live accent color. Every accent surface uses `bg-[var(--accent)]` etc., so the
+   admin's theme choice (persisted in site_settings) recolors the whole app at
+   runtime by overriding this one variable on <html> — see ThemeApplier. */
+:root {
+  --accent: #a855f7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #08080c;
+  color: #e9e9f0;
+  font-family: var(--font-manrope), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #55586a;
+}
+
+/* Locked-teaser theatrics */
+@keyframes glance-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+}
+
+@keyframes glance-jiggle {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0deg);
+  }
+  91% {
+    transform: rotate(-9deg);
+  }
+  94% {
+    transform: rotate(8deg);
+  }
+  97% {
+    transform: rotate(-5deg);
+  }
+}
+
+@keyframes glance-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes glance-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
