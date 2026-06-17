@@ -2,7 +2,7 @@ import postgres from "postgres";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ||
-  "postgresql://glance:glance_password@localhost:5432/glance";
+  `postgresql://${process.env.POSTGRES_USER || "glance"}:${process.env.POSTGRES_PASSWORD || "glance_password"}@localhost:${process.env.POSTGRES_PORT || "5432"}/${process.env.POSTGRES_DB || "glance"}`;
 
 const isLocalhost =
   DATABASE_URL.includes("@localhost") ||
