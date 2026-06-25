@@ -39,6 +39,27 @@ export interface Comment {
 
 export type Role = "admin" | "user" | "guest";
 
+/** Work state for a tracked project. */
+export const PROJECT_STATUSES = ["todo", "in_progress", "done"] as const;
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
+
+/** The circled label from the source list ('' = no tag). */
+export const PROJECT_TAGS = ["", "agentic", "book", "project"] as const;
+export type ProjectTag = (typeof PROJECT_TAGS)[number];
+
+/** An admin-only tracked project (the "My Projects" work tracker). */
+export interface Project {
+  id: string;
+  /** Hand-numbered order from the source list; shown as the "#". */
+  position: number;
+  title: string;
+  tag: ProjectTag;
+  status: ProjectStatus;
+  notes: string;
+  /** Progress tracked as steps out of 10 (the on-card progress bar). */
+  completion: number;
+}
+
 /** A Docker/service container shown on the admin-managed "My Server" page. */
 export interface ServerContainer {
   id: string;
@@ -94,6 +115,58 @@ export const AGENT_COLORS = [
   "#f472b6",
   "#ff7847",
 ] as const;
+
+/** What a cron job is — drives its content and which trigger/fields apply. */
+export const CRON_KINDS = ["custom", "server_health", "visit_reminder"] as const;
+export type CronKind = (typeof CRON_KINDS)[number];
+
+/**
+ * How a cron job becomes due:
+ *  - delay:    N minutes after the viewer opens the app
+ *  - schedule: a daily time-of-day
+ *  - interval: every N hours while the viewer has the app open (server_health)
+ *  - manual:   never automatically — only via the Send button (visit_reminder)
+ */
+export const CRON_TRIGGER_TYPES = [
+  "delay",
+  "schedule",
+  "interval",
+  "manual",
+] as const;
+export type CronTriggerType = (typeof CRON_TRIGGER_TYPES)[number];
+
+/**
+ * An admin-defined cron job (the "/cron" page). Delivered to the user currently
+ * viewing the app when the trigger becomes due — as an in-app notification and,
+ * when `sendEmail`, an email. `kind` selects the content (static body, generated
+ * server-health summary, or a visit nudge).
+ */
+export interface CronJob {
+  id: string;
+  title: string;
+  body: string;
+  kind: CronKind;
+  triggerType: CronTriggerType;
+  /** Minutes after the user opens the app (trigger='delay'). */
+  delayMinutes: number;
+  /** Daily time-of-day, "HH:MM" (trigger='schedule'). */
+  scheduleTime: string;
+  /** Hours between fires while viewing (trigger='interval'). */
+  intervalHours: number;
+  sendEmail: boolean;
+  enabled: boolean;
+  position: number;
+}
+
+/** A delivered in-app notification belonging to one user. */
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  read: boolean;
+  /** ISO timestamp. */
+  createdAt: string;
+}
 
 export type AccentKey = "purple" | "cyan" | "green" | "amber" | "pink";
 

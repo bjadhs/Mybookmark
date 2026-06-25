@@ -98,3 +98,35 @@ Avoid gradients for accent elements. Use solid `var(--accent)` instead.
 - Default: `rgba(255,255,255,0.06)`
 - Hover: `rgba(255,255,255,0.15)`
 
+
+# Cron Jobs & notifications (`/cron`)
+
+Admin-only page where jobs deliver a message to the **user currently viewing the
+app** — an in-app **toast** (bottom-right) plus an optional **email** (SMTP via
+`lib/email.ts`, configured by `SMTP_*` env; missing config = email silently
+skipped). **There is no server scheduler** — the client (`lib/hooks/use-cron-runner.ts`,
+mounted globally by `app/_components/notification-runtime.tsx`) evaluates which
+enabled jobs are due and POSTs `/api/cron/[id]/fire`. The server claims an
+idempotency slot in `cron_deliveries` before delivering, so reloads/double-polls
+never double-send. The `test` flag (Send button) bypasses dedup.
+
+Jobs have a **`kind`** picked from the "Add job" type list:
+- `custom` — written body; `trigger_type` `delay` (N min after open) or
+  `schedule` (daily HH:MM). In-app + optional email. Fires for any signed-in user.
+- `server_health` — `trigger_type` `interval` (every N hours while viewing);
+  body is generated live from `getLiveServerSnapshot` and emailed to the admin.
+  Admin-only (non-admins don't even receive these in `GET /api/cron`).
+- `visit_reminder` — `trigger_type` `manual` (only via Send); emails the admin.
+- Future AI-generated kinds are shown locked in the picker.
+
+Tables: `cron_jobs`, `notifications`, `cron_deliveries` (`lib/db/schema.sql`).
+DB layer `lib/db/cron.ts` + `lib/db/notifications.ts`; schemas/types in
+`lib/schemas.ts` + `lib/types.ts`. After changing the schema, re-apply it:
+`psql "$DATABASE_URL" -f lib/db/schema.sql` (idempotent).
+
+
+<!-- BEGIN:nextjs-agent-rules -->
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+<!-- END:nextjs-agent-rules -->

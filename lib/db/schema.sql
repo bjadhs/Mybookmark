@@ -161,3 +161,116 @@ SELECT * FROM (VALUES
    '#00d4ff', 'claude-sonnet-4-6', 6, 'Cycle running', 1)
 ) AS v(id, name, title, description, what_it_does, color, llm, robots, status, position)
 WHERE NOT EXISTS (SELECT 1 FROM agents);
+
+-- The N8N + Hermes rigs map to real containers on the server. Inserted per-row
+-- (ON CONFLICT DO NOTHING) so they also land on databases seeded before these
+-- existed, without disturbing the admin's edits.
+INSERT INTO agents (id, name, title, description, what_it_does, color, llm, robots, status, position)
+VALUES
+  ('agt_n8n', 'N8N Agent', 'Workflow Automation',
+   'Wires your stack together and runs jobs on a schedule.',
+   'The N8N rig orchestrates multi-step workflows across your services — webhooks in, transforms in the middle, and side effects out to Postgres, Slack, and HTTP endpoints. It runs in queue mode with a pool of workers and keeps seven workflows live around the clock.',
+   '#f472b6', 'n8n · self-hosted', 5, 'Cycle running', 2),
+  ('agt_hermes', 'Hermes Agent', 'Reasoning Engine',
+   'Tool-calling reasoning agent with long-context recall.',
+   'The Hermes rig pairs the Nous Research Hermes-4 model with a tool-calling loop: it plans, calls functions, reads from a vector memory backed by Postgres, and writes results back. A 128k context window lets it hold whole working sets in mind across a run.',
+   '#00d4ff', 'Hermes-4 · 128k', 6, 'Cycle running', 3)
+ON CONFLICT (id) DO NOTHING;
+
+-- ---------------------------------------------------------------------------
+-- "My Projects" work tracker. Admin-only (the page and its API both require an
+-- admin). `position` is the hand-numbered order from the source list (1..N) and
+-- is what the UI shows as the "#". `tag` is the circled label (agentic/book/
+-- project, or '' for none); `status` is the work state.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  tag TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'todo',
+  notes TEXT NOT NULL DEFAULT '',
+  -- Completion is tracked as steps out of 10 (the on-card progress bar).
+  completion INTEGER NOT NULL DEFAULT 0,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- completion was added after the projects table first shipped.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS completion INTEGER NOT NULL DEFAULT 0;
+
+-- ---------------------------------------------------------------------------
+-- Cron jobs + notifications. Admins define jobs on /cron; each fires for the
+-- user currently viewing the app — either a delay after they open it, or at a
+-- daily time-of-day — delivering a static message as an in-app notification and
+-- (optionally) an email. There is no server scheduler: the browser evaluates
+-- which jobs are due and POSTs /api/cron/[id]/fire. `cron_deliveries` is the
+-- idempotency ledger so a job fires at most once per user per occurrence.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS cron_jobs (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  -- What the job is: 'custom' | 'server_health' | 'visit_reminder'. Drives the
+  -- content and which trigger/fields apply.
+  kind TEXT NOT NULL DEFAULT 'custom',
+  -- 'delay' = N min after open; 'schedule' = daily HH:MM; 'interval' = every N
+  -- hours while viewing (server_health); 'manual' = only via the Send button.
+  trigger_type TEXT NOT NULL DEFAULT 'delay',
+  delay_minutes INTEGER NOT NULL DEFAULT 5,
+  schedule_time TEXT NOT NULL DEFAULT '09:00',
+  interval_hours INTEGER NOT NULL DEFAULT 6,
+  send_email BOOLEAN NOT NULL DEFAULT TRUE,
+  enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- kind + interval_hours were added after cron_jobs first shipped.
+ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'custom';
+ALTER TABLE cron_jobs ADD COLUMN IF NOT EXISTS interval_hours INTEGER NOT NULL DEFAULT 6;
+
+-- In-app notifications: one row per user per delivery. user_id is the Clerk id.
+CREATE TABLE IF NOT EXISTS notifications (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL DEFAULT '',
+  read BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS notifications_user_idx ON notifications(user_id, read);
+
+-- Idempotency ledger. The composite PK means a duplicate fire (double poll,
+-- reload) conflicts instead of delivering twice. occurrence_key is the UTC date
+-- bucket, e.g. 'delay:2026-06-25' — so a job lands at most once per day per user.
+CREATE TABLE IF NOT EXISTS cron_deliveries (
+  job_id TEXT NOT NULL REFERENCES cron_jobs(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  occurrence_key TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  PRIMARY KEY (job_id, user_id, occurrence_key)
+);
+
+-- Seed the initial 14-item project list, only when the table is empty so we
+-- never clobber the admin's tracked progress on a re-apply.
+INSERT INTO projects (id, title, tag, status, notes, position)
+SELECT * FROM (VALUES
+  ('prj_01', 'Job Application', '', 'todo', '', 1),
+  ('prj_02', 'Resume CV Agent / Claude RCV / Claude-loop', 'agentic', 'todo', '', 2),
+  ('prj_03', 'Communication & Interview Practice', '', 'todo', '', 3),
+  ('prj_04', 'Networking & LinkedIn', '', 'todo', '', 4),
+  ('prj_05', 'Light & Night Code', 'agentic', 'todo', '', 5),
+  ('prj_06', 'Resume Portfolio / React / Github', '', 'todo', '', 6),
+  ('prj_07', 'Hiday — a productivity app', '', 'todo', '', 7),
+  ('prj_08', 'Mybookmark — everything in one', '', 'todo', '', 8),
+  ('prj_09', 'Emburontoaark & Ecomm — projects showcase', 'project', 'todo', '', 9),
+  ('prj_10', 'Raspberry Pi & Hostinger Server', '', 'todo', '', 10),
+  ('prj_11', 'Agentic Loop (kimi & claude) — coding auto', 'agentic', 'todo', '', 11),
+  ('prj_12', 'Websites & AI business — 70 pages', 'book', 'todo', '', 12),
+  ('prj_13', 'Stock Analysis — investing', 'agentic', 'todo', '', 13),
+  ('prj_14', 'Postgresql & Agentic harness', 'book', 'todo', '', 14)
+) AS v(id, title, tag, status, notes, position)
+WHERE NOT EXISTS (SELECT 1 FROM projects);

@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { getSettings, updateSettings } from "@/lib/db/settings";
 import { sanitizeSettingsPatch } from "@/lib/settings";
 import { guardAdmin } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
     const settings = await getSettings();
     return NextResponse.json(settings);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 

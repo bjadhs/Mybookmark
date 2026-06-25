@@ -1,22 +1,7 @@
 import { sql } from "./index";
 import { Bookmark } from "@/lib/types";
 import { deriveDomain } from "@/lib/styles";
-
-export interface CreateBookmarkInput {
-  title: string;
-  url: string;
-  desc: string;
-  categoryId: string;
-  previewImage?: string | null;
-}
-
-export interface UpdateBookmarkInput {
-  title: string;
-  url: string;
-  desc: string;
-  categoryId: string;
-  previewImage?: string | null;
-}
+import { BookmarkInput, InvalidInputError } from "@/lib/schemas";
 
 /**
  * Normalize a raw category id and confirm it exists. Returns `{ id: null }`
@@ -31,7 +16,7 @@ async function resolveCategory(
   if (!categoryId) return { id: null, name: "" };
 
   const [row] = await sql`SELECT name FROM categories WHERE id = ${categoryId}`;
-  if (!row) throw new Error("Selected category no longer exists");
+  if (!row) throw new InvalidInputError("Selected category no longer exists");
 
   return { id: categoryId, name: String(row.name) };
 }
@@ -93,7 +78,7 @@ export async function getBookmarks(
 }
 
 export async function createBookmark(
-  input: CreateBookmarkInput
+  input: BookmarkInput
 ): Promise<Bookmark> {
   const title = input.title.trim();
   const url = input.url.trim();
@@ -167,7 +152,7 @@ export async function getBookmarkById(
 
 export async function updateBookmark(
   id: string,
-  input: UpdateBookmarkInput
+  input: BookmarkInput
 ): Promise<Bookmark | null> {
   const title = input.title.trim();
   const url = input.url.trim();

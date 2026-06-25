@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { createAgent, getAgents } from "@/lib/db/agents";
 import { guardAdmin } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
     const agents = await getAgents();
     return NextResponse.json(agents);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 

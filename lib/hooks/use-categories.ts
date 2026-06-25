@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Category } from "@/lib/types";
+import { categoriesSchema, categorySchema } from "@/lib/schemas";
 
 interface UseCategoriesResult {
   categories: Category[];
@@ -47,7 +48,7 @@ export function useCategories(): UseCategoriesResult {
           return;
         }
 
-        setCategories(data as Category[]);
+        setCategories(categoriesSchema.parse(data));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -75,7 +76,7 @@ export function useCategories(): UseCategoriesResult {
       const data = await readJson(res);
       if (!res.ok) throw new Error(errorMessage(data, res.status));
 
-      const created = data as Category;
+      const created = categorySchema.parse(data);
       setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       return created;
     },
@@ -93,7 +94,7 @@ export function useCategories(): UseCategoriesResult {
       const data = await readJson(res);
       if (!res.ok) throw new Error(errorMessage(data, res.status));
 
-      const updated = data as Category;
+      const updated = categorySchema.parse(data);
       setCategories((prev) =>
         prev.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
       );

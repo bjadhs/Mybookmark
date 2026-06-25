@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { safeFetch, SsrfError } from "@/lib/ssrf";
+import { previewQuerySchema } from "@/lib/schemas";
 
 export interface PreviewData {
   url: string;
@@ -47,19 +48,6 @@ const MAX_HTML_BYTES = 512 * 1024; // only the <head> matters
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36";
-
-function normalizeUrl(raw: string): URL | null {
-  let value = raw.trim();
-  if (!value) return null;
-  if (!/^https?:\/\//i.test(value)) value = `https://${value}`;
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-    return url;
-  } catch {
-    return null;
-  }
-}
 
 /** Pull every <meta> tag's attributes into a property/name -> content lookup. */
 function buildMetaMap(head: string): Map<string, string> {
@@ -150,15 +138,18 @@ async function readCappedText(res: Response): Promise<string> {
 }
 
 export async function GET(request: NextRequest) {
-  const raw = request.nextUrl.searchParams.get("url");
-  const target = raw ? normalizeUrl(raw) : null;
+  const parsed = previewQuerySchema.safeParse({
+    url: request.nextUrl.searchParams.get("url") ?? "",
+  });
 
-  if (!target) {
+  if (!parsed.success) {
     return NextResponse.json(
       { error: "A valid http(s) URL is required" },
       { status: 400 }
     );
   }
+
+  const target = parsed.data.url;
 
   const empty: PreviewData = {
     url: target.href,

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { createContainer, getContainers } from "@/lib/db/containers";
 import { guardAdmin } from "@/lib/auth";
+import { handleApiError } from "@/lib/api-error";
 
 export async function GET() {
   try {
     const containers = await getContainers();
     return NextResponse.json(containers);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 

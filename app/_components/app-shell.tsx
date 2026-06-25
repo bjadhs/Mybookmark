@@ -1,5 +1,7 @@
 import { AmbientBackground } from "@/app/_components/ambient-background";
 import { Sidebar } from "@/app/_components/sidebar";
+import { DbHealthGate } from "@/app/_components/db-health-gate";
+import { NotificationRuntime } from "@/app/_components/notification-runtime";
 import { SettingsProvider } from "@/lib/hooks/use-settings";
 
 interface AppShellProps {
@@ -12,8 +14,9 @@ export function AppShell({ children }: AppShellProps) {
       <div className="relative z-[1] flex min-h-screen text-[#e9e9f0]">
         <AmbientBackground />
         <Sidebar />
+        <NotificationRuntime />
         <main className="relative z-[1] flex-1 min-w-0 px-10 py-[30px] pb-[60px]">
-          {children}
+          <DbHealthGate>{children}</DbHealthGate>
         </main>
       </div>
     </SettingsProvider>

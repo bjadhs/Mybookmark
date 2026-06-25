@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Bookmark } from "@/lib/types";
+import {
+  BookmarkInput,
+  bookmarkSchema,
+  bookmarksSchema,
+  likeToggleSchema,
+} from "@/lib/schemas";
 
-export interface NewBookmarkInput {
-  title: string;
-  url: string;
-  desc: string;
-  categoryId: string;
-  previewImage?: string | null;
-}
-
-export type UpdateBookmarkInput = NewBookmarkInput;
+export type NewBookmarkInput = BookmarkInput;
+export type UpdateBookmarkInput = BookmarkInput;
 
 interface UseBookmarksResult {
   bookmarks: Bookmark[];
@@ -56,7 +55,7 @@ export function useBookmarks(): UseBookmarksResult {
           return;
         }
 
-        setBookmarks(data as Bookmark[]);
+        setBookmarks(bookmarksSchema.parse(data));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -82,7 +81,7 @@ export function useBookmarks(): UseBookmarksResult {
       const data = await readJson(res);
       if (!res.ok) throw new Error(errorMessage(data, res.status));
 
-      const created = data as Bookmark;
+      const created = bookmarkSchema.parse(data);
       setBookmarks((prev) => [created, ...prev]);
       return created;
     },
@@ -100,7 +99,7 @@ export function useBookmarks(): UseBookmarksResult {
       const data = await readJson(res);
       if (!res.ok) throw new Error(errorMessage(data, res.status));
 
-      const updated = data as Bookmark;
+      const updated = bookmarkSchema.parse(data);
       setBookmarks((prev) => prev.map((b) => (b.id === id ? updated : b)));
       return updated;
     },
@@ -123,7 +122,7 @@ export function useBookmarks(): UseBookmarksResult {
     const data = await readJson(res);
     if (!res.ok) throw new Error(errorMessage(data, res.status));
 
-    const { liked, likeCount } = data as { liked: boolean; likeCount: number };
+    const { liked, likeCount } = likeToggleSchema.parse(data);
     setBookmarks((prev) =>
       prev.map((b) =>
         b.id === id ? { ...b, likedByMe: liked, likeCount } : b

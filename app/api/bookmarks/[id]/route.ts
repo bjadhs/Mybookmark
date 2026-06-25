@@ -5,6 +5,8 @@ import {
   updateBookmark,
 } from "@/lib/db/bookmarks";
 import { getCurrentUserInfo, guardAdmin } from "@/lib/auth";
+import { handleApiError, validationError } from "@/lib/api-error";
+import { bookmarkInputSchema } from "@/lib/schemas";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -20,8 +22,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     return NextResponse.json(bookmark);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -32,26 +33,10 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json().catch(() => null);
+    const parsed = bookmarkInputSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
 
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
-    }
-
-    const { title, url, desc, categoryId, previewImage } = body as Record<
-      string,
-      unknown
-    >;
-
-    const bookmark = await updateBookmark(id, {
-      title: typeof title === "string" ? title : "",
-      url: typeof url === "string" ? url : "",
-      desc: typeof desc === "string" ? desc : "",
-      categoryId: typeof categoryId === "string" ? categoryId : "",
-      previewImage: typeof previewImage === "string" ? previewImage : null,
-    });
+    const bookmark = await updateBookmark(id, parsed.data);
 
     if (!bookmark) {
       return NextResponse.json({ error: "Bookmark not found" }, { status: 404 });
@@ -59,8 +44,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     return NextResponse.json(bookmark);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return handleApiError(error);
   }
 }
 
@@ -78,7 +62,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }

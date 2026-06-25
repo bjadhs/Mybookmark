@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { createCategory, getCategories } from "@/lib/db/categories";
 import { guardAdmin } from "@/lib/auth";
+import { handleApiError, validationError } from "@/lib/api-error";
+import { categoryInputSchema } from "@/lib/schemas";
 
 export async function GET() {
   try {
     const categories = await getCategories();
     return NextResponse.json(categories);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -18,27 +19,12 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => null);
+    const parsed = categoryInputSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
 
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
-    }
-
-    const { name } = body as Record<string, unknown>;
-
-    if (typeof name !== "string" || !name.trim()) {
-      return NextResponse.json(
-        { error: "Category name is required" },
-        { status: 400 }
-      );
-    }
-
-    const category = await createCategory(name);
+    const category = await createCategory(parsed.data.name);
     return NextResponse.json(category, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return handleApiError(error);
   }
 }

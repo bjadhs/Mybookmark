@@ -44,6 +44,8 @@ const RESERVED_SLUGS = new Set([
   "server",
   "agents",
   "category",
+  "projects",
+  "cron",
   "p",
   "add",
   "settings",

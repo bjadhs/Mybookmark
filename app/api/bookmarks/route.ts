@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createBookmark, getBookmarks } from "@/lib/db/bookmarks";
 import { getCurrentUserInfo, guardAdmin } from "@/lib/auth";
+import { handleApiError, validationError } from "@/lib/api-error";
+import { bookmarkInputSchema } from "@/lib/schemas";
 
 export async function GET() {
   try {
@@ -8,8 +10,7 @@ export async function GET() {
     const bookmarks = await getBookmarks(userId);
     return NextResponse.json(bookmarks);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -19,30 +20,12 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json().catch(() => null);
+    const parsed = bookmarkInputSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
 
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
-    }
-
-    const { title, url, desc, categoryId, previewImage } = body as Record<
-      string,
-      unknown
-    >;
-
-    const bookmark = await createBookmark({
-      title: typeof title === "string" ? title : "",
-      url: typeof url === "string" ? url : "",
-      desc: typeof desc === "string" ? desc : "",
-      categoryId: typeof categoryId === "string" ? categoryId : "",
-      previewImage: typeof previewImage === "string" ? previewImage : null,
-    });
-
+    const bookmark = await createBookmark(parsed.data);
     return NextResponse.json(bookmark, { status: 201 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return handleApiError(error);
   }
 }

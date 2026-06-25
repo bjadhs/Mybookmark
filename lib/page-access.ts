@@ -31,3 +31,15 @@ export async function enforcePageAccess(pageId: string): Promise<PageAccess> {
 
   return { settings, page, me };
 }
+
+/**
+ * Server-side gate for admin-only pages. Guests are sent to sign-in; signed-in
+ * non-admins are bounced home. The matching API routes enforce admin too, so
+ * this is the UX half of a defense-in-depth pair.
+ */
+export async function enforceAdmin(): Promise<CurrentUserInfo> {
+  const me = await getCurrentUserInfo();
+  if (!me.userId) redirect("/sign-in");
+  if (me.role !== "admin") redirect("/");
+  return me;
+}

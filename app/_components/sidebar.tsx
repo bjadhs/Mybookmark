@@ -8,6 +8,10 @@ import {
   PlusIcon,
   LogoIcon,
   LockIcon,
+  ProjectsIcon,
+  DeployIcon,
+  ServerIcon,
+  CronIcon,
   PAGE_ICONS,
 } from "@/app/_icons";
 import { useBookmarks } from "@/lib/hooks/use-bookmarks";
@@ -114,6 +118,44 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      {isAdmin && (
+        <>
+          <div className="text-[11px] font-bold tracking-[0.8px] text-glance-faint px-2 pb-[10px] mt-6">
+            ADMIN
+          </div>
+          <nav className="flex flex-col gap-[3px]">
+            <div
+              onClick={() => router.push("/projects")}
+              className={navLink("/projects")}
+            >
+              <ProjectsIcon />
+              <span className="flex-1">My Projects</span>
+            </div>
+            <div
+              onClick={() => router.push("/cron")}
+              className={navLink("/cron")}
+            >
+              <CronIcon />
+              <span className="flex-1">Cron</span>
+            </div>
+            <div
+              onClick={() => router.push("/deploy")}
+              className={navLink("/deploy")}
+            >
+              <DeployIcon />
+              <span className="flex-1">Deploy</span>
+            </div>
+            <div
+              onClick={() => router.push("/hostinger")}
+              className={navLink("/hostinger")}
+            >
+              <ServerIcon />
+              <span className="flex-1">Handbook</span>
+            </div>
+          </nav>
+        </>
+      )}
 
       {isSignedIn && (
         <>

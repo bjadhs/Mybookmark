@@ -5,6 +5,8 @@ import {
   updateCategory,
 } from "@/lib/db/categories";
 import { guardAdmin } from "@/lib/auth";
+import { handleApiError, validationError } from "@/lib/api-error";
+import { categoryInputSchema } from "@/lib/schemas";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -22,8 +24,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
     return NextResponse.json(category);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
 
@@ -34,24 +35,10 @@ export async function PUT(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json().catch(() => null);
+    const parsed = categoryInputSchema.safeParse(body);
+    if (!parsed.success) return validationError(parsed.error);
 
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
-    }
-
-    const { name } = body as Record<string, unknown>;
-
-    if (typeof name !== "string" || !name.trim()) {
-      return NextResponse.json(
-        { error: "Category name is required" },
-        { status: 400 }
-      );
-    }
-
-    const category = await updateCategory(id, name);
+    const category = await updateCategory(id, parsed.data.name);
 
     if (!category) {
       return NextResponse.json(
@@ -62,8 +49,7 @@ export async function PUT(request: Request, context: RouteContext) {
 
     return NextResponse.json(category);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 400 });
+    return handleApiError(error);
   }
 }
 
@@ -84,7 +70,6 @@ export async function DELETE(_request: Request, context: RouteContext) {
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return handleApiError(error);
   }
 }
