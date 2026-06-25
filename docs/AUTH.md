@@ -47,6 +47,9 @@ ADMIN_EMAIL=bijayadhikari107@gmail.com
 | View a **locked** custom page (`/p/[slug]`) | ❌* | ✅ | ✅ |
 | Add / edit / delete pages; set a page's icon/label/locked flag/locked copy/sections | ❌ | ❌ | ✅ |
 | Edit site settings (theme, server name, lock-icon toggle) | ❌ | ❌ | ✅ |
+| Manage cron jobs — create/edit/delete & send (`/cron`) | ❌ | ❌ | ✅ |
+| Receive a fired `custom` cron job (toast + optional email) | ❌ | ✅ | ✅ |
+| Receive `server_health` / `visit_reminder` (admin's own inbox) | ❌ | ❌ | ✅ |
 
 \* Guests don't get a hard "access denied" — both the sidebar and the page's own
 gate route them to the friendly `/locked` teaser instead (see §3a, §5).
@@ -162,10 +165,23 @@ All reads are public; all writes are role-checked.
 | `/api/agents` | public (list) | POST `guardAdmin()` |
 | `/api/agents/[id]` | public (one) | PUT/DELETE `guardAdmin()` |
 | `/api/settings` | public | PUT `guardAdmin()` |
+| `/api/cron` | signed-in only: admin → all jobs, user → enabled `custom` only | POST `guardAdmin()` |
+| `/api/cron/[id]` | — | PUT/DELETE `guardAdmin()` |
+| `/api/cron/[id]/fire` | — | POST `guardUser()` — see note |
 | `/api/me` | public | — |
 
 "Viewer-aware" = the bookmark queries take the caller's `userId` so each row can
 report `likeCount` and `likedByMe`. Guests get `likedByMe: false`.
+
+Cron fire authorization (the second per-kind rule): `POST /api/cron/[id]/fire` is
+`guardUser()` — the current viewer fires *their own* delivery (notification +
+email to themselves). But the `server_health` and `visit_reminder` **kinds** are
+**admin-only**, enforced inside the handler (403 for non-admins), since they
+target the admin's own inbox. `custom` jobs may be fired by any signed-in user.
+Non-admins never receive the admin-only kinds in `GET /api/cron`, so their client
+can't even attempt to fire them. The `test` flag (the **Send** button) bypasses
+the per-occurrence dedup and is itself only reachable from the admin-only `/cron`
+page. See `docs/CRON.md` for the full delivery + dedup design.
 
 `/api/me` is the bridge to the client: it returns
 `{ role, isSignedIn, isAdmin, name, imageUrl }` so the UI can gate cosmetically
@@ -238,6 +254,7 @@ what to *show*.
 | `/p/[slug]` | per-page† | Admin-created custom page. Public if its `locked` flag is off, else members-only. Renders the page's editable `sections`. 404 for unknown/built-in slugs. |
 | `/settings` | members | Site settings — view (user) / edit (admin): theme accent, server name, lock-icon toggle, and the **Pages** manager (per-page label, icon, locked toggle, locked-screen copy, and content sections for custom pages). |
 | `/add` | admin | Add bookmark; double-guarded (page + API) |
+| `/cron` | admin | Cron jobs manager; `enforceAdmin()` (page) + `guardAdmin()` (API). See `docs/CRON.md`. |
 
 † Gated by `enforcePageAccess` (§3a), **not** middleware. A guest hitting a
 locked one is redirected to `/locked?feature=<id>`; an unlocked page is public.
@@ -279,7 +296,9 @@ Pages are admin-managed data, stored as `SiteSettings.pages` (the single
 | `lib/db/containers.ts` | `getContainers` / `createContainer` / `updateContainer` / `deleteContainer` — admin writes guarded at the API |
 | `lib/db/settings.ts` | `getSettings` / `updateSettings` — single JSONB row, folded over `DEFAULT_SETTINGS` in `lib/settings.ts` |
 | `lib/db/agents.ts` | `getAgents` / `getAgentById` / `createAgent` / `updateAgent` / `deleteAgent` — admin writes guarded at the API |
-| `lib/db/schema.sql` | Tables `bookmark_likes`, `comments`, `server_containers`, `site_settings`, `agents` (applied manually — see below) |
+| `lib/db/cron.ts` | `getCronJobs` (admin) / `getEnabledCronJobs(customOnly)` (viewer) / CRUD + `recordDeliveryIfNew` (idempotency) — admin writes guarded at the API |
+| `lib/db/notifications.ts` | `createNotification` — written when a cron job fires (audit + the toast payload) |
+| `lib/db/schema.sql` | Tables `bookmark_likes`, `comments`, `server_containers`, `site_settings`, `agents`, `cron_jobs`, `notifications`, `cron_deliveries` (applied manually — see below) |
 
 Schema is applied **manually** (no auto-loader). Postgres runs in Docker
 (`glance-db`). Apply with:
@@ -320,6 +339,7 @@ npm run dev -- -p 3200
 | Change the upsell/teaser copy | edit a page's locked-screen fields in `/settings` → Pages (generic fallback: `FALLBACK_LOCKED` in `lib/settings.ts`); layout in `app/locked/page.tsx` |
 | Change like/comment storage | `lib/db/likes.ts`, `lib/db/comments.ts`, `lib/db/schema.sql` |
 | Change client gating signal | `/api/me` + `lib/hooks/use-role.ts` |
+| Change cron jobs / delivery / who can fire what | `app/api/cron/**` (`guardAdmin`/`guardUser` + per-kind gate), `lib/db/cron.ts`, `lib/hooks/use-cron-runner.ts`; full design in `docs/CRON.md` |
 | Add a site setting (theme/server name/etc.) | `SiteSettings` + `DEFAULT_SETTINGS` + `sanitizeSettingsPatch` in `lib/settings.ts`; surface it in `app/_components/screens/settings-screen.tsx` |
 | Change the page model (icons, sections, fields) | `ManagedPage`/`PageIconKey`/`PageSection` in `lib/types.ts`, `DEFAULT_PAGES`/merge/sanitize in `lib/settings.ts`, `PAGE_ICONS` in `app/_icons`, the Pages manager in `settings-screen.tsx`, render in `custom-page.tsx` |
 | Change the server-container model | `lib/types.ts` (`ServerContainer`), `lib/db/containers.ts`, `app/_components/screens/server-screen.tsx` |
