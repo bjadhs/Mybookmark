@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# database dump produced for the Hostinger migration (carries user data)
+glance_backup.sql
+
 # vercel
 .vercel
 
